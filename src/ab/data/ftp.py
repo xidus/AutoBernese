@@ -3,37 +3,24 @@ Transfer files over FTP
 
 """
 
-import datetime as dt
-from os.path import join
 from pathlib import Path
 from ftplib import FTP
-from urllib.parse import ParseResult
 from fnmatch import fnmatch
 from ftplib import (
     FTP,
     error_perm,
 )
-from typing import Any
-from collections.abc import (
-    Iterable,
-    Iterator,
-)
+from collections.abc import Iterator
 from contextlib import contextmanager
 import functools
 import logging
 
-from ab import configuration
 from ab.data import TransferStatus
 from ab.data.source import Source
 from ab.data.stats import already_updated
 
 
 log = logging.getLogger(__name__)
-
-
-@functools.cache
-def is_file(ftp: FTP, candidate: str) -> bool:
-    return ftp.nlst(candidate) == [candidate]
 
 
 @contextmanager

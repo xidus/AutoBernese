@@ -1,119 +1,132 @@
 workspace "GNSS processing with AutoBernese" {
 
+    # Default: flat
+    !identifiers hierarchical
+
     model "AutoBernese" {
 
-        external_data_sources = softwareSystem "External data sources"
+        external_data_sources = softwareSystem "External data sources" {
+            container "TU Wien" "Troposphere-delay model data" "HTTP-server"
+            container "AIUB" "Bernese configuration and model data as well as CODE data products" "FTP-server"
+            container "Chalmers" "Ocean-loading-tide data" "Web form and email"
+        }
 
-        enterprise "Agency for Data Supply and Infrastructure" {
+        group "Danish Agency for Climate Data" {
             user = person "Geodesist"
-            # cron = person "System user | CRON job"
 
-            auto_bernese = softwareSystem "AutoBernese" {
+            autobernese = softwareSystem "AutoBernese" {
+
+                # Layer: I/O
                 cli = container "CLI application" {}
-                download_api = container "Download API" {
+
+                configuration = container "Configuration" {
+                    constructors = component "YAML constructors"
+                }
+
+                # Layer: API
+                bsw = container "BSW API" {
+                    bpe_perl_script = component "BPE program" "Perl script that starts the Bernese Processing Engine" "Perl"
+                    bpe_process_runner = component "BPE process runner" "Creates subprocess with a call to the BPE interface"
+                    campaign_manager = component "Create, run and inspect BSW campaigns"
+                }
+
+                data_transfer = container "Data transfer" {
                     downloader = component "Downloader" "Downloads specified files from external data sources." "FTP/HTTP"
                     download_controller = component "Download controller" "Specifies source files and local destinations."
                 }
+
                 preprocessor = container "Preprocess and organise input to and output from BSW" {
                     qaqc = component "Kvalitetssikring [QA] og kvalitetskontrol [QC]" {}
-                    gensta = component "Legacy converter" "Converts sitelogs to station file." "Perl"
-                    gensta_runner = component "gensta runner" "Creates subprocess with a call to the Perl program"
-                }
-                bsw_api = container "BSW API" {
-                    bpe_interface = component "BPE interface" "Perl scripts that configure and start the Bernese Processing Engine" "Perl 5"
-                    bpe_runner = component "BPE runner" "Creates subprocess with a call to the BPE interface"
-                    campaign_manager = component "Create, configure and work with BSW campaigns"
-                }
-                fire_api = container "FIRE API" {
-                    fire_wrapper = component "FIRE wrapper" "Creates a subprocess that runs FIRE command to read in specified results from the campaign." "MambaForge, FIRE"
+                    sitelog2sta = component "Legacy converter" "Converts sitelogs to station file." "Perl"
+                    sitelog2sta_runner = component "sitelog2sta runner" "Creates subprocess with a call to the Perl program"
                 }
             }
 
-            file_server = softwareSystem "File server" {
-                datapool = container "BSW DATAPOOL" "The directory BSW uses as common raw-data storage."
-                campaign = container "BSW CAMPAIGN" "The directory BSW uses for each campaign area."
-                savedisk = container "BSW SAVEDISK" "The directory BSW uses as end-product storage."
-                everything_else = container "Everything else" "The rest of the file system used for GNSS-related data."
+            file_system = softwareSystem "File system" {
+                campaign = container "CAMPAIGN" "BSW campaign workspace"
+                datapool = container "DATAPOOL" "BSW raw-data storage"
+                savedisk = container "SAVEDISK" "BSW end-product storage"
+                everything_else = container "All other data" "The rest of the file system used for GNSS-related data."
             }
+
             bsw = softwareSystem "BSW" {
-                bsw_perl_interface = container "BSW Perl modules" "Perl programs that can be used to start the Bernese Processning Engine."
+                perl_api = container "Perl API" "BSW Perl modules that used to run individual Bernese programs or the Bernese Processing Engine"
+                model_data = container "MODEL" "BSW internal model data storage"
+                config_data = container "CONFIG" "BSW internal configuration data storage"
             }
-            fire = softwareSystem "FIRE" {}
+
         }
 
         # Relationships between people and software systems
-        download_api -> external_data_sources "Get data"
+        autobernese.data_transfer -> external_data_sources "Get data"
 
-        user -> cli "Create campaign, activate campaign"
-        user -> cli "Get data from external sources"
-        user -> cli "Create STA file from updated sitelog"
-        user -> cli "Run PCF file for campaign"
-        user -> cli "Export end products"
-        user -> cli "Upload results to FIRE Dataase"
-        user -> file_server "Get and move end products to own PC"
+        user -> autobernese.cli "Create campaign"
+        user -> autobernese.cli "Get data from external sources"
+        user -> autobernese.cli "Prepare input data + QA"
+        user -> autobernese.cli "Run BSW campaign"
+        user -> autobernese.cli "Quality control"
+        user -> autobernese.cli "Prepare and publish end products"
 
-        cli -> download_api "Get data from sources in campaign.yaml"
+        # user -> file_system "Get and move end products to own PC"
 
-        cli -> qaqc "Check data integrity, accessibility, etc."
-        cli -> qaqc "Perform quality assurance/control on end products"
+        autobernese.cli -> autobernese.data_transfer "Download data"
 
-        cli -> preprocessor "Rebuild general input data" ""
-        cli -> preprocessor "Transfer relevant input data to the campaign directory"
+        # autobernese.cli -> autobernese.preprocessor.qaqc "Check data integrity, accessibility, etc."
+        # autobernese.cli -> autobernese.preprocessor.qaqc "Perform quality assurance/control on end products"
 
-        cli -> bsw_api "Create new campaign of given type" "NKG, 5D, KDI, RTK service"
-        cli -> bsw_api "Convert sitelog to station file"
-        cli -> bsw_api "Start BPE using campaign-specific PCF file"
+        autobernese.cli -> autobernese.preprocessor "Rebuild general input data" ""
+        autobernese.cli -> autobernese.preprocessor "Transfer relevant input data to the campaign directory"
 
-        cli -> fire_api "Upload results to FIRE Database" ".CRD and .VEL files"
+        autobernese.cli -> autobernese.bsw "Create new campaign of given type" "NKG, 5D, KDI, RTK service"
+        autobernese.cli -> autobernese.bsw "Convert sitelog to station file"
+        autobernese.cli -> autobernese.bsw "Start BPE using campaign-specific PCF file"
 
-        # Relationships to/from containers
-        download_api -> file_server "Store external data locally"
-        bsw_api -> file_server "Store workspace and end products"
-        qaqc -> file_server "Assure quality of end products."
-        bsw_api -> bsw "Organise campaign and run BPE"
-        fire_api -> fire "Upload end products to FIRE database"
+        # autobernese.cli -> fire_api "Upload results to FIRE Database" ".CRD and .VEL files"
 
-        # Relationships to/from components
+        # Relationships between containers
+        autobernese.data_transfer -> file_system "Store external data locally"
+        autobernese.bsw -> file_system "Store workspace and end products"
+        autobernese.preprocessor.qaqc -> file_system "Assure quality of end products."
+        autobernese.bsw -> bsw "Organise campaign and run BPE"
+
+        # Relationships between components
         # TBW
         # Here will come the interactions between the different parts on the component level.
-        gensta_runner -> gensta "Run converter for a given sitelog."
+        autobernese.preprocessor.sitelog2sta_runner -> autobernese.preprocessor.sitelog2sta "Run converter for a given sitelog."
     }
 
     views {
-        # systemlandscape "SystemLandscape" {
-        #     include *
-        #     animation {
-        #         file_server
-        #     }
-        #     autoLayout
-        # }
 
-        systemContext auto_bernese {
+        systemlandscape "systemlandscape" {
             include *
-            autolayout lr
+            # animation {
+            #     file_system
+            # }
         }
 
-        container auto_bernese {
+        systemContext autobernese "context-autobernese" {
             include *
-            autolayout tb
         }
 
-        component download_api "Data" {
+        container autobernese "container-autobernese" {
             include *
-            autoLayout
         }
 
-        component preprocessor "Preprocessor" {
+        component autobernese.data_transfer "component-data" {
             include *
-            autoLayout
         }
 
-        component bsw_api "BSW" {
+        component autobernese.bsw "component-bsw" {
             include *
-            autoLayout
         }
 
         theme default
+
+        styles {
+            element "Group" {
+                color #ff0000
+            }
+        }
     }
 
 }

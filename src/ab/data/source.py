@@ -20,6 +20,47 @@ from ab.parameters import permutations
 
 log = logging.getLogger(__name__)
 
+from functools import partial
+
+
+# @dataclass
+# class Pair:
+#     """
+#     """
+
+#     # Local file and its maximum age, before downloading again
+#     ofname: Path | None = None
+#     max_age: int = math.inf
+
+#     # Transfer
+#     timeout: int = 30
+
+#     #
+#     # connection_interface: Callable
+
+#     # Assumption: the URI is a path to a file
+#     uri: str
+
+#     path_local: str
+
+#     @property
+#     def local_still_valid(self) -> bool:
+#         if self.ofname is None:
+#             return False
+#         return file_age(self.ofname) <= self.max_age
+
+#     def __post_init__(self) -> None:
+#         # Given: uri = 'https://example.com/filename.txt'
+#         parsed: ParseResult = urlparse(self.uri)
+#         # Then: `parsed.path` will be the full path (without protocol) to
+#         # `filename.txt`
+#         filepath: Path = Path(parsed.path)
+
+#         # From `filepath` we can get the remote directory path and the filename
+#         # of the file to download.
+#         self.path_remote: str = str(filepath.parent)
+#         self.fname: str = str(filepath.name)
+
 
 @dataclass
 class RemoteLocalPair:
@@ -138,17 +179,6 @@ class Source:
         -   This constrains where the final resolution of the filenames should
             be performed.
 
-    *   What if the parameter is a range?
-
-        -   So far, a range of dates can be made from the configuration file
-            using the `!DateRange` YAML tag and a mapping with `beg` and `end`
-            being the beginning and end dates (both will be included).
-
-    To implement (maybe):
-
-    *   What if the parameter is given as an open range in the sense that all
-        subsequent data, if available, should be downloaded?
-
     """
 
     identifier: str
@@ -170,6 +200,7 @@ class Source:
         # Have each component
         self._parsed = urlparse(self.url_)
         self.protocol = self._parsed.scheme
+
         # In order to ensure clear API semantics for `self.protocol`, override
         # default (and correct) result (``) in `ParseResult.scheme`, when the
         # path is local (begins with `/`).

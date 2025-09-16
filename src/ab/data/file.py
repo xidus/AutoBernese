@@ -54,3 +54,29 @@ def download(source: Source) -> TransferStatus:
             status.success += 1
 
     return status
+
+
+# def transfer(pair) -> None:
+#     destination = Path(pair.path_local)
+
+#     # Loop over each file resolved
+#     for ifname in resolve_wildcards(pair.uri):
+#         ofname = destination / ifname.name
+
+#         if already_updated(ofname, max_age=pair.max_age):
+#             log.debug(f"{ofname.name!r} exists ...")
+#             status.existing += 1
+#             continue
+
+#         log.info(f"Copy {ifname} to {ofname} ...")
+#         ofname.parent.mkdir(parents=True, exist_ok=True)
+#         shutil.copy2(ifname, ofname)
+
+#         if not ofname.is_file():
+#             log.warning(f"File {ofname.name!r} not copied ...")
+#             status.failed += 1
+#             continue
+
+#         status.success += 1
+
+#     return status

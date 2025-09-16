@@ -66,6 +66,10 @@ runtime:
   # Filename for the common configuration
   common_config: !Path [*ab, autobernese.yaml]
 
+  # Filename for campaign configuration
+  common_config: campaign.yaml
+
+  # TODO: Maybe split this up, so that campaign-only sctions are for themselves?
   # Sections that can be added to or overridden in the core configuration
   sections_to_override:
   - metadata

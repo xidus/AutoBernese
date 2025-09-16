@@ -44,7 +44,9 @@ N_FILES_H: Final = 5
 "Number of input hour files"
 
 N_LINES_H: Final = 64807
-"Number of lines in an hour file"
+"Number of lines in a VMF3 hour file"
+# N_LINES_H: Final = 13111
+# "Number of lines in a VMF1 hour file"
 
 IX_LINE_MAX: Final = N_LINES_H - 1
 "Line index of the last line in an hour file"
